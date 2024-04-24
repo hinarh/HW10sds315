@@ -1,0 +1,145 @@
+---
+title: "HW10"
+author: "Nihar Harkare"
+date: "2024-04-23"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+
+[https://github.com/hinarh/HW10sds315](https://github.com/hinarh/HW10sds315)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+# Problem 1
+
+```{r echo=FALSE}
+redline = read_csv("redlining.csv", show_col_types = FALSE)
+
+lm_model = lm(policies ~ minority + fire + age + income, data = redline)
+
+summary(lm_model)
+
+min_conf = confint(lm_model, "minority", level = 0.95)
+```
+1) Question:
+
+Is there an association between the number of FAIR policies and the racial/ethic composition of a ZIP code?
+
+2) Approach:
+
+To answer this question, I used a linear regression model, andy including independent variables in the model, we can control for their effects and better understand the specific association between FAIR policies and racial/ethnic composition of a ZIP code.
+
+3) Results:
+
+Minority (racial/ethnic composition): The coefficient for minority is 0.008, and the associated p-value is 0.006.
+
+Fire Incidents: The coefficient for fire incidents is 0.022 with a p-value of 0.018.
+
+Age of Housing Units: The coefficient for age of housing units is 0.006 with a p-value of 0.143.
+
+Median Family Income: The coefficient for median family income is -0.016 with a p-value of 0.679.
+
+4) Conclusion:
+
+We can see, since the p-value is very low, the coefficient is significant, meaning that as the number of fair policies increase, the percentage of minorities increases by very little, from `r min_conf[0]` to `r min_conf[1]` at 95% confidence.
+
+# Problem 2
+
+## Part A
+
+```{r echo=FALSE}
+groceries = read_csv("groceries.csv", show_col_types = FALSE)
+
+average_price_per_store = groceries %>%
+  group_by(Store) %>%
+  summarize(Average_Price = mean(Price))
+
+ggplot(average_price_per_store, aes(x = Average_Price, y = reorder(Store, Average_Price))) +
+  geom_bar(stat = "identity", fill = "green") +
+  labs(title = "Average Price of Products Sold at Different Stores", x = "Average Price (in dollars)", y = "Store") +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1))
+```
+
+Average price calculated from available products in the dataset.
+
+## Part B
+
+```{r echo=FALSE}
+stores_per_product = groceries %>%
+  group_by(Product) %>%
+  summarize(Num_Stores = n_distinct(Store))
+
+ggplot(stores_per_product, aes(x = Num_Stores, y = reorder(Product, Num_Stores))) +
+  geom_bar(stat = "identity", fill = "orange") +
+  labs(title = "Number of Stores Selling Each Product", x = "Number of Stores", y = "Product")
+```
+
+## Part C
+
+```{r echo=FALSE}
+groceries_nona = na.omit(groceries)
+
+convenience_model = lm(Price ~ Product + Type, data = groceries_nona)
+
+conf_interval = confint(convenience_model, "TypeConvenience")
+
+lower_bound = conf_interval[1]
+upper_bound = conf_interval[2]
+
+lower_bound = round(lower_bound, 2)
+upper_bound = round(upper_bound, 2)
+```
+
+Compared with ordinary grocery stores, convenience stores charge between $`r lower_bound`, and $`r upper_bound` more for the same product.
+
+## Part D
+
+```{r echo=FALSE}
+store_model = lm(Price ~ Product + Store, data = groceries)
+
+summary(store_model)
+```
+
+Looking at the results, Walmart and Kroger seem to charge the lowest prices when comparing the same product, and Whole Foods and Wheatsville Food Co-Op seem to charge the highest prices when comparing the same product.
+
+## Part E
+
+```{r echo=FALSE}
+coef_heb = coef(store_model)["StoreHEB"]
+coef_cm = coef(store_model)["StoreCentral Market"]
+```
+
+
+Looking at the coefficients, `r coef_heb` for HEB and `r coef_cm` for central market, we can see that Central Market charges a similar amount to HEB for the same product. The difference between these two seem to be the smallest out of any store.
+
+## Part F
+
+```{r echo=FALSE}
+groceries = groceries %>%
+  mutate(Income10K = Income / 10000)
+
+income_model = lm(Price ~ Product + Income10K, data = groceries)
+
+summary(income_model)
+
+coef_inc10k = coef(income_model)["Income10K"]
+
+sd_income = sd(groceries$Income10K)
+
+change_in_price = coef_inc10k * sd_income
+```
+
+Since the coefficient for Income10K is `r coef_inc10k` and the sign is negative, we can assume consumers in poorer ZIP codes seem to pay less for the same product, on average.
+
+A one-standard deviation increase in the income of a ZIP code seems to be associated with
+a `r change_in_price` standard-deviation change in the price that consumers in that ZIP code expect to pay for
+the same product.
